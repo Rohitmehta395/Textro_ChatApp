@@ -34,6 +34,11 @@ const isAllowedOrigin = (origin) => {
   const normalizedOrigin = origin.replace(/\/+$/, "");
   if (allowedOrigins.has(normalizedOrigin)) return true;
 
+  // Allow all Vercel deployments (production domain, branch and preview URLs)
+  if (/^https:\/\/.*\.vercel\.app$/.test(normalizedOrigin)) {
+    return true;
+  }
+
   if (ENV.NODE_ENV === "development") {
     return /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin);
   }
@@ -49,7 +54,7 @@ app.use(
         return callback(null, true);
       }
 
-      return callback(new Error(`CORS blocked for origin: ${origin}`));
+      return callback(null, false);
     },
     credentials: true,
   })
