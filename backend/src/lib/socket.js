@@ -6,11 +6,24 @@ import { socketAuthMiddleware } from "../middleware/socket.auth.middleware.js";
 
 const app = express();
 const server = http.createServer(app);
-const allowedOrigins = new Set([ENV.CLIENT_URL, "http://localhost:5173", "http://127.0.0.1:5173"]);
+const parseOrigins = (urlString) => {
+  if (!urlString) return [];
+  return urlString
+    .split(",")
+    .map((url) => url.trim().replace(/\/+$/, ""))
+    .filter(Boolean);
+};
+
+const allowedOrigins = new Set([
+  ...parseOrigins(ENV.CLIENT_URL),
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+]);
 
 const isAllowedOrigin = (origin) => {
   if (!origin) return true;
-  if (allowedOrigins.has(origin)) return true;
+  const normalizedOrigin = origin.replace(/\/+$/, "");
+  if (allowedOrigins.has(normalizedOrigin)) return true;
 
   if (ENV.NODE_ENV === "development") {
     return /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin);

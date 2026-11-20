@@ -11,15 +11,18 @@ export const generateToken = (userId, res) => {
     expiresIn: "7d",
   });
 
+  const isProduction = ENV.NODE_ENV === "production";
+
   res.cookie("jwt", token, {
-    maxAge: 7 * 24 * 60 * 60 * 1000, // MS
-    httpOnly: true, // prevent XSS attacks: cross-site scripting
-    sameSite: "strict", // CSRF attacks
-    secure: ENV.NODE_ENV === "development" ? false : true,
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in ms
+    httpOnly: true, // prevent XSS attacks
+    sameSite: isProduction ? "none" : "lax", // 'none' required for cross-domain (Vercel <-> Render)
+    secure: isProduction, // 'secure: true' required when sameSite is 'none'
   });
 
   return token;
 };
+
 
 // http://localhost
 // https://dsmakmk.com

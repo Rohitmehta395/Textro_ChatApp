@@ -4,7 +4,8 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { io } from "socket.io-client";
 
-const BASE_URL = import.meta.env.MODE === "development" ? "http://localhost:3000" : "/";
+const backendUrl = (import.meta.env.VITE_BACKEND_URL || "").replace(/\/+$/, "");
+const BASE_URL = backendUrl || (import.meta.env.MODE === "development" ? "http://localhost:3000" : "/");
 
 const getErrorMessage = (error, fallbackMessage) => {
   if (axios.isAxiosError(error)) {

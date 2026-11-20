@@ -1,6 +1,7 @@
 import express from "express";
 import cookieParser from "cookie-parser";
 import path from "path";
+import fs from "fs";
 import cors from "cors";
 
 import authRoutes from "./routes/auth.route.js";
@@ -12,11 +13,26 @@ import { app, server } from "./lib/socket.js";
 const __dirname = path.resolve();
 
 const PORT = ENV.PORT || 3000;
-const allowedOrigins = new Set([ENV.CLIENT_URL, "http://localhost:5173", "http://127.0.0.1:5173"]);
+
+// Parse client URLs (strip trailing slashes, support comma-separated origins)
+const parseOrigins = (urlString) => {
+  if (!urlString) return [];
+  return urlString
+    .split(",")
+    .map((url) => url.trim().replace(/\/+$/, ""))
+    .filter(Boolean);
+};
+
+const allowedOrigins = new Set([
+  ...parseOrigins(ENV.CLIENT_URL),
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+]);
 
 const isAllowedOrigin = (origin) => {
   if (!origin) return true;
-  if (allowedOrigins.has(origin)) return true;
+  const normalizedOrigin = origin.replace(/\/+$/, "");
+  if (allowedOrigins.has(normalizedOrigin)) return true;
 
   if (ENV.NODE_ENV === "development") {
     return /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin);
@@ -40,15 +56,29 @@ app.use(
 );
 app.use(cookieParser());
 
+// Health check endpoint for Render/uptime monitoring
+app.get("/api/health", (_, res) => {
+  res.status(200).json({ status: "ok", message: "Textro API is healthy" });
+});
+
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
 
-// make ready for deployment
-if (ENV.NODE_ENV === "production") {
-  app.use(express.static(path.join(__dirname, "../frontend/dist")));
+// Static frontend serving if built alongside backend, otherwise fallback root route
+const frontendDistPath = path.join(__dirname, "../frontend/dist");
+if (ENV.NODE_ENV === "production" && fs.existsSync(frontendDistPath)) {
+  app.use(express.static(frontendDistPath));
 
   app.get("*", (_, res) => {
-    res.sendFile(path.join(__dirname, "../frontend", "dist", "index.html"));
+    res.sendFile(path.join(frontendDistPath, "index.html"));
+  });
+} else {
+  app.get("/", (_, res) => {
+    res.status(200).json({
+      status: "ok",
+      name: "Textro Chat API",
+      message: "Server is running smoothly. Connect your frontend to this URL.",
+    });
   });
 }
 
